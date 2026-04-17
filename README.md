@@ -33,8 +33,11 @@ Firebase security rules enforced
 
 📄 Documentation
 
+
 👉 [System Documentation (PDF)](https://github.com/yunustoprakc50-droid/kandas-blood-donation-system/blob/main/kandas.pdf)
-👉 [Security Rules](https://github.com/yunustoprakc50-droid/kandas-blood-donation-system/blob/main/kandas_rules.txt)
+
+👉 [Security Rules]
+(https://github.com/yunustoprakc50-droid/kandas-blood-donation-system/blob/main/kandas_rules.txt)
 
 ⚠️ Disclaimer
 
