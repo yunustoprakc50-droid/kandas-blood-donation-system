@@ -1,0 +1,218 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+ // BURAYA 👇
+    function sistemKilitliMi() {
+      return get(/databases/$(database)/documents/ayarlar/sistem).data.kilit == true;
+    }
+    
+    // =========================
+    // HELPER FUNCTIONS
+    // =========================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/adminler/$(request.auth.uid));
+    }
+
+    function isDoctor(doktorId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/doktorlar/$(doktorId)) &&
+        get(/databases/$(database)/documents/doktorlar/$(doktorId)).data.aktifUid
+          == request.auth.uid;
+    }
+
+    function isBashekim(bashekimId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/bashekimler/$(bashekimId)) &&
+        get(/databases/$(database)/documents/bashekimler/$(bashekimId)).data.aktifUid
+          == request.auth.uid;
+    }
+
+    // =========================
+    // DOKTORLAR
+    // =========================
+
+    match /doktorlar/{doktorId} {
+
+  allow get: if isSignedIn();   // 🔥 değişti
+
+  allow list: if isSignedIn();
+
+  allow create: if
+    isSignedIn() &&
+    !sistemKilitliMi() &&
+    request.resource.data.bashekimId is string &&
+    exists(/databases/$(database)/documents/bashekimler/$(request.resource.data.bashekimId)) &&
+    get(/databases/$(database)/documents/bashekimler/$(request.resource.data.bashekimId)).data.aktifUid
+      == request.auth.uid;
+
+  allow update: if
+  isSignedIn() &&
+  !sistemKilitliMi() &&
+  (
+    isAdmin()
+    ||
+    request.resource.data.aktifUid == request.auth.uid
+&& request.resource.data.diff(resource.data).changedKeys().hasOnly(['aktifUid', 'sonGiris'])
+    ||
+    isDoctor(doktorId)
+  );
+
+
+
+
+
+  allow delete: if
+    !sistemKilitliMi() &&
+    (
+    isAdmin()
+    ||
+    (
+      exists(/databases/$(database)/documents/bashekimler/$(resource.data.bashekimId)) &&
+      get(/databases/$(database)/documents/bashekimler/$(resource.data.bashekimId)).data.aktifUid
+        == request.auth.uid
+    )
+  );
+}
+
+
+    // =========================
+    // BAŞHEKİMLER
+    // =========================
+
+    match /bashekimler/{bashekimId} {
+
+      // 🔥 Kritik: get izni olmadan create içindeki get() çalışmaz
+      allow get: if isSignedIn();
+
+      allow list: if isAdmin();
+
+     allow update: if
+  isSignedIn() &&
+  !sistemKilitliMi() &&
+  (
+    request.resource.data.aktifUid == request.auth.uid
+&& request.resource.data.diff(resource.data).changedKeys().hasOnly(['aktifUid', 'sonGiris'])
+    ||
+    resource.data.aktifUid == request.auth.uid
+    ||
+    isAdmin()
+  );
+
+      allow create, delete: if isAdmin() && !sistemKilitliMi();
+    }
+
+
+   // =========================
+// İLANLAR
+// =========================
+
+match /ilanlar/{ilanId} {
+
+  allow get, list: if true;
+
+  allow create: if
+    isSignedIn() &&
+    !sistemKilitliMi() &&
+    request.resource.data.hash is string &&
+    request.resource.data.guncellemeSayisi == 0 &&
+    (
+      isDoctor(request.resource.data.doktorId)
+      ||
+      isBashekim(request.resource.data.bashekimId)
+      ||
+      isAdmin()
+    );
+
+  allow update: if
+  isSignedIn() &&
+  !sistemKilitliMi() &&
+  request.resource.data.doktorId == resource.data.doktorId &&
+  request.resource.data.bashekimId == resource.data.bashekimId &&
+  (
+    (
+      isDoctor(resource.data.doktorId) &&
+      resource.data.guncellemeSayisi < 2 &&
+      request.resource.data.guncellemeSayisi
+        == resource.data.guncellemeSayisi + 1
+    )
+    ||
+    (
+      isBashekim(resource.data.bashekimId) &&
+      request.resource.data.guncellemeSayisi
+        == resource.data.guncellemeSayisi + 1
+    )
+    ||
+    isAdmin()
+  );
+
+
+  allow delete: if
+    isSignedIn() &&
+    !sistemKilitliMi() &&
+    (
+      isDoctor(resource.data.doktorId)
+      ||
+      isBashekim(resource.data.bashekimId)
+      ||
+      isAdmin()
+    );
+
+}  // 🔥 BU PARANTEZ MUTLAKA OLMALI
+
+
+
+    // =========================
+    // GÜNLÜK KAYITLAR
+    // =========================
+
+    match /gunluk_kayitlar/{docId} {
+
+  allow read: if isAdmin() || isSignedIn();
+
+  allow create: if
+    isSignedIn() &&
+    !sistemKilitliMi() &&
+    (
+      isDoctor(request.resource.data.doktorId)
+      ||
+      isBashekim(request.resource.data.bashekimId)
+    );
+
+  allow delete: if isAdmin() && !sistemKilitliMi();
+}
+
+
+    // =========================
+    // ADMİNLER
+    // =========================
+
+    match /adminler/{uid} {
+      allow read, write: if isAdmin();
+    }
+
+// =========================
+// AYARLAR
+// =========================
+
+match /ayarlar/{docId} {
+  allow get: if isSignedIn();   // sadece login olanlar okuyabilir
+  allow write: if isAdmin();    // sadece admin değiştirebilir
+}
+
+    // =========================
+    // GLOBAL LOCK
+    // =========================
+
+match /{document=**} {
+  allow read, write: if isAdmin();
+
+    }
+  }
+}

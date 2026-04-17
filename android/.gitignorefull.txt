@@ -1,0 +1,23 @@
+# 🔐 secrets
+key.properties
+*.keystore
+google-services.json
+.env
+
+# 🧠 local
+local.properties
+.idea/
+.metadata
+
+# 🗑️ logs
+*.log
+hs_err_pid*
+
+# ⚙️ build
+build/
+.dart_tool/
+node_modules/
+
+# firebase
+.firebase/
+firebase-debug.log
