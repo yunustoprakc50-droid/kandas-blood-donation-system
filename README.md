@@ -69,4 +69,5 @@ The author is not responsible for misuse or insecure deployments.
 This repository contains a simplified and cleaned version of Firestore security rules.
 
 Sensitive parts have been removed.
+
 Developed by Yunus Toprakcı
