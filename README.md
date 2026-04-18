@@ -6,6 +6,7 @@ KANDAS is a mobile-based emergency blood request system designed to connect hosp
 
 This project was developed for public benefit, without any commercial intent.
 
+If this project helps save a life, I’d truly appreciate hearing about it
 
 🚀 Features
 
